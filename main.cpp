@@ -10,10 +10,16 @@
 #include <cmath>
 #include <mutex>
 
-const int n_blocks = 16;
+#include "chrono.h"
+
+
+// this program creates a few threads that running continuously, only to load the CPU/mem
+// meanwhile very small threads will be created and detached during the test. These threads do very little work then exit quickly.
+
+const int n_blocks = 16; //one thread will operate on this many memory blocks to provide some CPU load
 const int c_block_size = 65536;
-const int c_test_seconds = 10;
-const double thread_create_freq = 300;
+const int c_test_seconds = 10; // measurement duration
+const double thread_create_freq = 300; //this many extra threads (multiplied by the n_threads_created_together) will be created per second
 const int n_threads_created_together = 6;
 
 namespace this_thread = std::this_thread;
@@ -23,7 +29,7 @@ using std::atomic;
 using std::chrono::seconds;
 using std::string;
 using std::to_string;
-using hrc = std::chrono::high_resolution_clock;
+using hrc = high_resolution_clock;
 using std::chrono::duration_cast;
 using std::chrono::duration;
 
@@ -83,7 +89,7 @@ public:
         return var_sample_;
     }
 
-    int count() const { return count_; }
+    int count() const { return (int)count_; }
     int64_t count64() const { return count_; }
     double sum() const { return sum_; }
     double sum2() const { return sum2_; }
@@ -142,7 +148,7 @@ int main() {
 	if(n_threads_created_together > 0) {
 		printf("Creating %d empty threads at %f Hz...\n", n_threads_created_together, thread_create_freq);
 		auto frame_time = 1.0 / thread_create_freq;
-		int n_frames = c_test_seconds / frame_time;
+		int n_frames = (int)(c_test_seconds / frame_time+0.5);
 		printf("There will be %d frames = %d empty threads\n", n_frames, n_frames * n_threads_created_together);
 		auto dur_frame_time = duration_cast<hrc::duration>(duration<double>(frame_time));
 		for(int f = 0; f < n_frames; ++f) {
@@ -190,7 +196,7 @@ void Statistics::update() const
 {
     if (count_ > 0) {
         mean_ = sum_ / count_;
-        var_ = (count_ * sum2_ - square(sum_)) / (square(count_));
+        var_ = ((double)count_ * sum2_ - square(sum_)) / (square((double)count_));
         std_ = sqrt(var_);
         if (count_ > 1) {
             var_sample_ =
